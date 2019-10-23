@@ -1,58 +1,107 @@
 <template>
-  <div id="player" class="player">
-    <div class="background">
-      <div class="filter"></div>
-      <img src="https://p3fx.kgimg.com/stdmusic/20191010/20191010191203148524.jpg" width="100%" height="100%"/>
-    </div>
-    <div class="top">
-      <div class="back">
-        <!--返回按钮-->
-        <i class="iconfont icon-xiangzuo"></i>
-      </div>
-      <!--歌名和歌手-->
-      <div class="song-info">
-        <div class="title"><span>野狼Disco</span></div>
-        <div class="singer"><span>宝石Gem、陈伟霆</span><i class="iconfont icon-xiangyou"></i></div>
-      </div>
-      <!--分享-->
-      <div class="share">
-        <i class="iconfont icon-fenxiang-1" @click="shareShow=!shareShow"></i>
-      </div>
-    </div>
-    <div class="middle">
-      <div class="middle-pic" v-show="currentShow === 'cd'">
-        <div class="cd-wrapper">
-          <div class="cd play" :class="">
-            <img src="https://p3fx.kgimg.com/stdmusic/20191010/20191010191203148524.jpg" class="image"/>
+  <div class="player" v-show="playlist.length>0">
+    <!-- 全屏播放器 -->
+    <transition name="normal">
+      <div class="normal-player" v-show="fullScreen">
+        <div class="background">
+          <div class="filter"></div>
+          <img :src="currentSong.image" width="100%" height="100%"/>
+        </div>
+        <div class="top">
+          <div class="back">
+            <!--返回按钮-->
+            <i class="iconfont icon-xiangzuo" @click="toDown"></i>
+          </div>
+          <!--歌名和歌手-->
+          <div class="song-info">
+            <div class="title"><span>currentSong.name</span></div>
+            <div class="singer"><span>currentSong.singer</span><i class="iconfont icon-xiangyou"></i></div>
+          </div>
+          <!--分享-->
+          <div class="share">
+            <i class="iconfont icon-fenxiang-1" @click="shareShow=!shareShow"></i>
           </div>
         </div>
-      </div>
-      <!--歌词部分-->
-    </div>
-    <div class="bottom">
-      <div class="btop">
-        <!--收藏这里要变换样式-->
-        <div><i style="font-size:20px;color:#ddd;"class="iconfont icon-shoucang1"></i></div>
-        <div><i style="font-size:20px;color:#ddd;"class="iconfont icon-xiazai"></i></div>
-        <div><i style="font-size:20px;color:#ddd;"class="iconfont icon-yinxiao"></i></div>
-        <div><i style="font-size:20px;color:#ddd;"class="iconfont icon-pinglun"></i></div>
-        <div><i style="font-size:20px;color:#ddd;"class="iconfont icon-xiangxixinxi" @click="songInfoShow=!songInfoShow"></i>
+        <div class="middle" @click="changeMiddle">
+          <transition name="middleL"> 
+            <div class="middle-pic" v-show="currentShow === 'cd'">
+              <div class="cd-wrapper">
+                <div class="cd" :class="cdCls">
+                  <img :src="currentSong.image" class="image"/>
+                </div>
+              </div>
+            </div>
+          </transition>
+          <!--歌词部分-->
+          <transition name="middleR">
+            <scroll class="middle-lrc" ref="lyricList" v-show="currentShow === 'lyric'" :data="currentLyric && currentLyric.lines">
+              <div class="lyric-wrapper">
+                <div class="currentLyric" v-if="currentLyric">
+                  <p ref="lyricLine" class="text" :class="{'current': currentLineNum === index}"
+                    v-for="(line, index) in currentLyric.lines" :key="index">
+                    {{line.txt}}
+                  </p>
+                </div>
+              </div>
+            </scroll>
+          </transition>
         </div>
-      </div>
-      <div class="bmiddle">
-        <!--进度条-->
-        <span class="ltime">00:00</span>
-        <div class="progress-bar">
-          <!--进度条组件-->
+        <div class="bottom">
+          <div class="btop">
+            <!--收藏这里要变换样式-->
+            <div @click="toggleFavoriteList(currentSong)">
+              <i v-if="getFavoriteListCollect(currentSong)" style="font-size:20px;color:#ddd;" class="iconfont icon-shoucang1"></i>
+              <i v-else style="font-size:20px;color:#f00;" class="iconfont icon-shoucang"></i>
+            </div>
+            <div><i style="font-size:20px;color:#ddd;" class="iconfont icon-xiazai"></i></div>
+            <div><i style="font-size:20px;color:#ddd;" class="iconfont icon-yinxiao"></i></div>
+            <div><i style="font-size:20px;color:#ddd;" class="iconfont icon-pinglun"></i></div>
+            <div><i style="font-size:20px;color:#ddd;" class="iconfont icon-xiangxixinxi" @click="songInfoShow=!songInfoShow"></i>
+            </div>
+          </div>
+          <div class="bmiddle">
+            <!--进度条-->
+            <span class="ltime">00:00</span>
+            <!-- 进度条组件 -->
+            <progressBar style="overflow:hidden" :percent="percent" @percentChange="percentChange"></progressBar>
+            <span class="rtime">00:00</span>
+          </div>
+          <div class="bbottom">
+            <div @click="changeMode">
+              <i v-if="mode===2" style="color:#fff;font-size:20px;" class="iconfont icon-suijibofang1"></i>
+              <i v-if="mode===0" style="color:#fff;font-size:20px;" class="iconfont icon-liebiaoxunhuan"></i>
+              <i v-if="mode===1" style="color:#fff;font-size:20px;" class="iconfont icon-danquxunhuan"></i>
+            </div>
+            <div @click="prev"><i style="color:#fff;font-size:20px;" class="iconfont icon-shangyishoushangyige"></i></div>
+            <div @click="togglePlaying">
+              <i v-if="playing" id="playButton" style="color:#fff;font-size:40px;" class="iconfont icon-zanting"></i>
+              <i v-if="!playing" id="playButton" style="color:#fff;font-size:40px;" class="iconfont icon-bofang"></i>
+            </div>
+            <div @click="next"><i style="color:#fff;font-size:20px;" class="iconfont icon-xiayigexiayishou"></i></div>
+            <div><i style="color:#fff;font-size:20px;" class="iconfont icon-bofangliebiao" @click="playListShow=!playListShow;"></i></div>
+          </div>
         </div>
-        <span class="rtime">00:00</span>
+        <!-- 音乐播放器 -->
+        <audio ref="audio" @canplay="audioReady" @error="audioError" @timeupdate="timeUpdate" @ended="songEnd"></audio>
       </div>
-      <div class="bbottom">
-        <div><i style="color:#fff;font-size:20px;" class="iconfont icon-liebiaoxunhuan"></i></div>
-        <div><i style="color:#fff;font-size:20px;" class="iconfont icon-shangyishoushangyige"></i></div>
-        <div><i style="color:#fff;font-size:40px;" class="iconfont icon-zanting"></i></div>
-        <div><i style="color:#fff;font-size:20px;" class="iconfont icon-xiayigexiayishou"></i></div>
-        <div><i style="color:#fff;font-size:20px;" class="iconfont icon-bofangliebiao" @click="playListShow=!playListShow;"></i></div>
+    </transition>
+    <!-- 迷你播放器 -->
+    <div class="mini-player" v-show="!fullScreen" @click="toUp">
+      <div class="mini-player-con">
+        <img :class="playing? 'playSrart' : 'playStorp'" :src="currentSong.image" alt="">
+        <p>
+          <span class="mini-title" v-html="currentSong.name"></span>
+          <span class="mini-name" v-html="currentSong.singer"></span>
+        </p>
+        <div class="playButton-box">
+          <span @click.stop="togglePlaying" class="playButton">
+            <img v-if="playing" src="./playStrop.png" alt="">
+            <img v-if="!playing" src="./playButton.png" alt="">
+          </span>
+          <span class="playList" @click.stop="playListClick">
+            <img src="./playList.png" alt="播放按钮" title="播放">
+          </span>
+        </div>
       </div>
     </div>
     <van-action-sheet v-model="shareShow" title="分享">
@@ -85,7 +134,7 @@ export default {
 
 
 <style scoped>
-.player{
+.normal-player{
   background-image: linear-gradient(to bottom,#000 0%,#333 100%);
   position: fixed;
   left: 0;
@@ -211,6 +260,34 @@ export default {
   height:70%;
   border-radius:50%;
 }
+
+.middle-lrc{
+  display: inline-block;
+  position: absolute;
+  top: 0;
+  vertical-align: top;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.lyric-wrapper{
+  width: 80%;
+  margin: 0 auto;
+  overflow: hidden;
+  text-align: center;
+}
+
+.lyric-wrapper .text{
+  line-height: 40px;
+  color: #c7c7c7;
+  font-size: 14px;
+}
+
+.lyric-wrapper .text.current{
+  color: #fff;
+}
+
 
 @keyframes rotate {
   0% {
