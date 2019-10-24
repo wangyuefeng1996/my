@@ -1,11 +1,11 @@
 <template>
-  <div class="player" v-show="playlist.length>0">
+  <div class="player" v-show="$store.getters.getplaying.length>0">
     <!-- 全屏播放器 -->
     <transition name="normal">
-      <div class="normal-player" v-show="fullScreen">
+      <div class="normal-player" v-show="$store.getters.getfullScreen">
         <div class="background">
           <div class="filter"></div>
-          <img :src="currentSong.image" width="100%" height="100%"/>
+          <img :src="$store.getters.getplayList[$store.getters.getcurrentIndex].spic" width="100%" height="100%"/>
         </div>
         <div class="top">
           <div class="back">
@@ -14,8 +14,8 @@
           </div>
           <!--歌名和歌手-->
           <div class="song-info">
-            <div class="title"><span>currentSong.name</span></div>
-            <div class="singer"><span>currentSong.singer</span><i class="iconfont icon-xiangyou"></i></div>
+            <div class="title"><span>{{$store.getters.getplayList[$store.getters.getcurrentIndex].songName}}</span></div>
+            <div class="singer"><span>{{$store.getters.getplayList[$store.getters.getcurrentIndex].gname}}</span><i class="iconfont icon-xiangyou"></i></div>
           </div>
           <!--分享-->
           <div class="share">
@@ -27,7 +27,7 @@
             <div class="middle-pic" v-show="currentShow === 'cd'">
               <div class="cd-wrapper">
                 <div class="cd" :class="cdCls">
-                  <img :src="currentSong.image" class="image"/>
+                  <img :src="$store.getters.getplayList[$store.getters.getcurrentIndex].spic" class="image"/>
                 </div>
               </div>
             </div>
@@ -127,6 +127,9 @@ export default {
     }
   },
   mounted() {
+    
+  },
+  created() {
     
   },
 }
